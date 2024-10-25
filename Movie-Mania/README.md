@@ -10,16 +10,6 @@ Features
 - Restoring added movies after reopening  browser
 - Use on on mobile and desktop devices
 
-Instructions
-- Web browser (Google Chrome, Firefox, Safari)
-- Internet
-- A code editor (VS Code)
-
-Installing
-1. Clone or download zip file to repository on  local machine
-2. Open the project in your code editor
-3. Open the index.html file in your web browser to run the app
-
 Built With
 - HTML
 - CSS
