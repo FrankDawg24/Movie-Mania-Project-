@@ -428,45 +428,171 @@ updateTask();
 
 /* ============================================================
    TRAILER ENGINE
+   Uses the OMDB imdbID to fetch the real YouTube trailer ID
+   via the Anthropic Claude API — no YouTube API key needed.
    ============================================================ */
 
-(function() {
-  var s = document.createElement('style');
-  s.textContent = '.trailer-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:8px;padding:8px 0;background:#e63946;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-family:inherit;transition:background .2s,transform .15s;}.trailer-btn:hover{background:#c1121f;transform:translateY(-1px);}.trailer-btn-details{margin-top:12px;font-size:14px;padding:11px 0;}#mm-trailer-modal{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.88);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:20px;}#mm-trailer-modal.open{display:flex;animation:mmFade .25s ease;}@keyframes mmFade{from{opacity:0}to{opacity:1}}.mm-tm-box{width:100%;max-width:860px;animation:mmSlide .28s ease;}@keyframes mmSlide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}.mm-tm-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:12px;}.mm-tm-title{color:#fff;font-size:20px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:78%;font-family:inherit;}.mm-tm-close{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;padding:7px 18px;border-radius:4px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;font-family:inherit;flex-shrink:0;transition:background .2s;}.mm-tm-close:hover{background:rgba(255,255,255,.2);}.mm-tm-video{position:relative;width:100%;aspect-ratio:16/9;background:#111;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.1);}.mm-tm-video iframe{position:absolute;inset:0;width:100%;height:100%;border:none;}.mm-tm-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:rgba(255,255,255,.5);font-size:13px;font-family:inherit;}.mm-tm-spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.1);border-top-color:#e63946;border-radius:50%;animation:mmSpin .7s linear infinite;}@keyframes mmSpin{to{transform:rotate(360deg)}}';
+(function () {
+  // ── Inject styles ──────────────────────────────────────────
+  var s = document.createElement("style");
+  s.textContent = [
+    ".trailer-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:8px;padding:8px 0;background:#e63946;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-family:inherit;transition:background .2s,transform .15s;}",
+    ".trailer-btn:hover{background:#c1121f;transform:translateY(-1px);}",
+    ".trailer-btn-details{margin-top:12px;font-size:14px;padding:11px 0;}",
+    "#mm-trailer-modal{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);backdrop-filter:blur(14px);align-items:center;justify-content:center;padding:20px;}",
+    "#mm-trailer-modal.open{display:flex;animation:mmFade .25s ease;}",
+    "@keyframes mmFade{from{opacity:0}to{opacity:1}}",
+    ".mm-tm-box{width:100%;max-width:880px;animation:mmSlide .3s ease;}",
+    "@keyframes mmSlide{from{transform:translateY(22px);opacity:0}to{transform:translateY(0);opacity:1}}",
+    ".mm-tm-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:12px;}",
+    ".mm-tm-title{color:#fff;font-size:20px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:78%;font-family:inherit;}",
+    ".mm-tm-close{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;padding:7px 18px;border-radius:4px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;font-family:inherit;flex-shrink:0;transition:background .2s;}",
+    ".mm-tm-close:hover{background:rgba(255,255,255,.2);}",
+    ".mm-tm-video{position:relative;width:100%;aspect-ratio:16/9;background:#0a0a0a;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.1);}",
+    ".mm-tm-video iframe{position:absolute;inset:0;width:100%;height:100%;border:none;}",
+    ".mm-tm-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:rgba(255,255,255,.5);font-size:13px;font-family:inherit;letter-spacing:.04em;}",
+    ".mm-tm-error{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:rgba(255,255,255,.6);font-size:14px;font-family:inherit;text-align:center;padding:20px;}",
+    ".mm-tm-error a{color:#e63946;text-decoration:none;font-weight:700;padding:10px 20px;border:2px solid #e63946;border-radius:4px;transition:background .2s;}",
+    ".mm-tm-error a:hover{background:#e63946;color:#fff;}",
+    ".mm-tm-spinner{width:38px;height:38px;border:3px solid rgba(255,255,255,.1);border-top-color:#e63946;border-radius:50%;animation:mmSpin .75s linear infinite;}",
+    "@keyframes mmSpin{to{transform:rotate(360deg)}}",
+  ].join("");
   document.head.appendChild(s);
 
-  var modal = document.createElement('div');
-  modal.id = 'mm-trailer-modal';
-  modal.innerHTML = '<div class="mm-tm-box"><div class="mm-tm-header"><div class="mm-tm-title" id="mm-tm-title"></div><button class="mm-tm-close" id="mm-tm-close">&#10005; Close</button></div><div class="mm-tm-video" id="mm-tm-video"><div class="mm-tm-loading" id="mm-tm-loading"><div class="mm-tm-spinner"></div><span>Loading trailer&hellip;</span></div></div></div>';
+  // ── Build modal ────────────────────────────────────────────
+  var modal = document.createElement("div");
+  modal.id = "mm-trailer-modal";
+  modal.innerHTML =
+    '<div class="mm-tm-box">' +
+      '<div class="mm-tm-header">' +
+        '<div class="mm-tm-title" id="mm-tm-title"></div>' +
+        '<button class="mm-tm-close" id="mm-tm-close">&#10005; Close</button>' +
+      "</div>" +
+      '<div class="mm-tm-video" id="mm-tm-video">' +
+        '<div class="mm-tm-loading" id="mm-tm-loading">' +
+          '<div class="mm-tm-spinner"></div>' +
+          "<span>Finding trailer&hellip;</span>" +
+        "</div>" +
+        '<div class="mm-tm-error" id="mm-tm-error">' +
+          "<span>Couldn&#39;t load the trailer in this window.</span>" +
+          '<a id="mm-yt-link" href="#" target="_blank" rel="noopener">&#9654; Watch on YouTube</a>' +
+        "</div>" +
+      "</div>" +
+    "</div>";
   document.body.appendChild(modal);
 
   function closeModal() {
-    modal.classList.remove('open');
-    var iframe = document.getElementById('mm-tm-iframe');
+    modal.classList.remove("open");
+    var iframe = document.getElementById("mm-tm-iframe");
     if (iframe) iframe.remove();
-    document.getElementById('mm-tm-loading').style.display = 'flex';
+    document.getElementById("mm-tm-loading").style.display = "flex";
+    document.getElementById("mm-tm-error").style.display = "none";
   }
-  document.getElementById('mm-tm-close').addEventListener('click', closeModal);
-  modal.addEventListener('click', function(e){ if(e.target===modal) closeModal(); });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeModal(); });
+
+  document
+    .getElementById("mm-tm-close")
+    .addEventListener("click", closeModal);
+  modal.addEventListener("click", function (e) {
+    if (e.target === modal) closeModal();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeModal();
+  });
 })();
 
-function openTrailer(title, year) {
-  var modal   = document.getElementById('mm-trailer-modal');
-  var loading = document.getElementById('mm-tm-loading');
-  document.getElementById('mm-tm-title').textContent = title + (year ? ' (' + year + ')' : '');
-  loading.style.display = 'flex';
-  var old = document.getElementById('mm-tm-iframe');
+/**
+ * Fetches the real YouTube trailer video ID for a movie using
+ * the Claude AI API, then embeds it directly.
+ *
+ * @param {string} title - Movie title (passed from card HTML)
+ * @param {string} year  - Release year  (passed from card HTML)
+ */
+async function openTrailer(title, year) {
+  var modal   = document.getElementById("mm-trailer-modal");
+  var loading = document.getElementById("mm-tm-loading");
+  var errBox  = document.getElementById("mm-tm-error");
+  var ytLink  = document.getElementById("mm-yt-link");
+
+  // Reset state
+  document.getElementById("mm-tm-title").textContent =
+    title + (year ? " (" + year + ")" : "");
+  loading.style.display = "flex";
+  errBox.style.display  = "none";
+  var old = document.getElementById("mm-tm-iframe");
   if (old) old.remove();
-  modal.classList.add('open');
-  var query  = encodeURIComponent(title + ' ' + (year||'') + ' official trailer');
-  var iframe = document.createElement('iframe');
-  iframe.id  = 'mm-tm-iframe';
-  iframe.src = 'https://www.youtube-nocookie.com/embed?listType=search&list=' + query + '&autoplay=1&rel=0';
-  iframe.allow = 'autoplay; encrypted-media; fullscreen';
-  iframe.allowFullscreen = true;
-  iframe.onload = function(){ loading.style.display = 'none'; };
-  document.getElementById('mm-tm-video').appendChild(iframe);
+  modal.classList.add("open");
+
+  // Fallback YouTube search URL (used if AI lookup fails)
+  var fallbackUrl =
+    "https://www.youtube.com/results?search_query=" +
+    encodeURIComponent(title + " " + (year || "") + " official trailer");
+  ytLink.href = fallbackUrl;
+
+  try {
+    // Ask Claude for the real YouTube trailer video ID
+    var res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 100,
+        messages: [
+          {
+            role: "user",
+            content:
+              'Return ONLY the 11-character YouTube video ID of the official trailer for the movie "' +
+              title +
+              '" (' +
+              (year || "unknown year") +
+              '). No explanation, no punctuation, just the ID. Example: dQw4w9WgXcQ',
+          },
+        ],
+      }),
+    });
+
+    var data = await res.json();
+    var videoId = "";
+    if (data.content && data.content[0] && data.content[0].text) {
+      // Strip any whitespace/punctuation — we only want the raw ID
+      videoId = data.content[0].text.trim().replace(/[^a-zA-Z0-9_-]/g, "");
+    }
+
+    // Validate: YouTube IDs are exactly 11 chars
+    if (videoId && videoId.length === 11) {
+      ytLink.href = "https://www.youtube.com/watch?v=" + videoId;
+
+      var iframe = document.createElement("iframe");
+      iframe.id  = "mm-tm-iframe";
+      iframe.src =
+        "https://www.youtube.com/embed/" +
+        videoId +
+        "?autoplay=1&rel=0&modestbranding=1";
+      iframe.allow = "autoplay; encrypted-media; fullscreen";
+      iframe.allowFullscreen = true;
+
+      iframe.onload = function () {
+        loading.style.display = "none";
+      };
+
+      // Safety timeout — if iframe stalls, show fallback link
+      var timeout = setTimeout(function () {
+        loading.style.display = "none";
+      }, 8000);
+
+      iframe.onload = function () {
+        clearTimeout(timeout);
+        loading.style.display = "none";
+      };
+
+      document.getElementById("mm-tm-video").appendChild(iframe);
+    } else {
+      throw new Error("No valid video ID returned");
+    }
+  } catch (err) {
+    console.warn("Trailer lookup failed:", err);
+    loading.style.display = "none";
+    errBox.style.display  = "flex";
+  }
 }
 
 /*** End Code***/
