@@ -165,7 +165,7 @@ async function showMovieList() {
       }')"></i>
                         
                         </div>
-                        
+                        <button class="trailer-btn" onclick="openTrailer('${element.Title}','${element.Year}')">&#9654; Watch Trailer</button>
                     </div>
                 </div>
                     `;
@@ -304,6 +304,7 @@ async function showMovieDetails(itemId, searchInput) {
                          ? "Remove From Watchlist"
                          : "Add To Watchlist"
                      } </div>
+                    <button class="trailer-btn trailer-btn-details" onclick="openTrailer('${movieDetails.Title}','${movieDetails.Year}')">&#9654; Watch Trailer</button>
                 </div>
             </div>
         </div> 
@@ -346,7 +347,7 @@ async function showMovieDetails(itemId, searchInput) {
       }')"></i>
                         
                         </div>
-                        
+                        <button class="trailer-btn" onclick="openTrailer('${element.Title}','${element.Year}')">&#9654; Watch Trailer</button>
                     </div>
                     </div>
                 `;
@@ -424,4 +425,48 @@ async function showFavMovieList() {
 }
 
 updateTask();
+
+/* ============================================================
+   TRAILER ENGINE
+   ============================================================ */
+
+(function() {
+  var s = document.createElement('style');
+  s.textContent = '.trailer-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:8px;padding:8px 0;background:#e63946;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-family:inherit;transition:background .2s,transform .15s;}.trailer-btn:hover{background:#c1121f;transform:translateY(-1px);}.trailer-btn-details{margin-top:12px;font-size:14px;padding:11px 0;}#mm-trailer-modal{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.88);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:20px;}#mm-trailer-modal.open{display:flex;animation:mmFade .25s ease;}@keyframes mmFade{from{opacity:0}to{opacity:1}}.mm-tm-box{width:100%;max-width:860px;animation:mmSlide .28s ease;}@keyframes mmSlide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}.mm-tm-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:12px;}.mm-tm-title{color:#fff;font-size:20px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:78%;font-family:inherit;}.mm-tm-close{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;padding:7px 18px;border-radius:4px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;font-family:inherit;flex-shrink:0;transition:background .2s;}.mm-tm-close:hover{background:rgba(255,255,255,.2);}.mm-tm-video{position:relative;width:100%;aspect-ratio:16/9;background:#111;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.1);}.mm-tm-video iframe{position:absolute;inset:0;width:100%;height:100%;border:none;}.mm-tm-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:rgba(255,255,255,.5);font-size:13px;font-family:inherit;}.mm-tm-spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.1);border-top-color:#e63946;border-radius:50%;animation:mmSpin .7s linear infinite;}@keyframes mmSpin{to{transform:rotate(360deg)}}';
+  document.head.appendChild(s);
+
+  var modal = document.createElement('div');
+  modal.id = 'mm-trailer-modal';
+  modal.innerHTML = '<div class="mm-tm-box"><div class="mm-tm-header"><div class="mm-tm-title" id="mm-tm-title"></div><button class="mm-tm-close" id="mm-tm-close">&#10005; Close</button></div><div class="mm-tm-video" id="mm-tm-video"><div class="mm-tm-loading" id="mm-tm-loading"><div class="mm-tm-spinner"></div><span>Loading trailer&hellip;</span></div></div></div>';
+  document.body.appendChild(modal);
+
+  function closeModal() {
+    modal.classList.remove('open');
+    var iframe = document.getElementById('mm-tm-iframe');
+    if (iframe) iframe.remove();
+    document.getElementById('mm-tm-loading').style.display = 'flex';
+  }
+  document.getElementById('mm-tm-close').addEventListener('click', closeModal);
+  modal.addEventListener('click', function(e){ if(e.target===modal) closeModal(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeModal(); });
+})();
+
+function openTrailer(title, year) {
+  var modal   = document.getElementById('mm-trailer-modal');
+  var loading = document.getElementById('mm-tm-loading');
+  document.getElementById('mm-tm-title').textContent = title + (year ? ' (' + year + ')' : '');
+  loading.style.display = 'flex';
+  var old = document.getElementById('mm-tm-iframe');
+  if (old) old.remove();
+  modal.classList.add('open');
+  var query  = encodeURIComponent(title + ' ' + (year||'') + ' official trailer');
+  var iframe = document.createElement('iframe');
+  iframe.id  = 'mm-tm-iframe';
+  iframe.src = 'https://www.youtube-nocookie.com/embed?listType=search&list=' + query + '&autoplay=1&rel=0';
+  iframe.allow = 'autoplay; encrypted-media; fullscreen';
+  iframe.allowFullscreen = true;
+  iframe.onload = function(){ loading.style.display = 'none'; };
+  document.getElementById('mm-tm-video').appendChild(iframe);
+}
+
 /*** End Code***/
